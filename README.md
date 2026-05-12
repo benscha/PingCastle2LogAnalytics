@@ -381,7 +381,7 @@ The App Registration is missing **Monitoring Metrics Publisher** role on the DCR
 #
 # Authentication:
 #   Arc Managed Identity  -> Key Vault (read certificate)
-#   App Registration      -> Log Ingestion API (certificate JWT)
+#   app-scr-pingcastlelogingest (App Registration) -> Log Ingestion API (Cert-JWT)
 #
 # Output per domain:
 #   ad_hc_<domain>_summary.json   -> PingCastle_Summary_CL
@@ -397,10 +397,10 @@ function Get-ArcManagedIdentityToken {
     .SYNOPSIS
         Retrieves an OAuth2 token from the Azure Arc IMDS endpoint (port 40342).
         Arc uses a challenge-response mechanism:
-          1. GET -> 401 + WWW-Authenticate header with path to a local key file
+          1. GET -> 401 + WWW-Authenticate header containing path to a local key file
                     Format: Basic realm=<filepath>  (no quotes around path)
           2. Read the key file (only possible locally = proof of local execution)
-          3. GET + Authorization: Basic <key-file-content> -> access_token
+          3. GET + Authorization: Basic <Base64(key)> -> access_token
         Uses HttpWebRequest instead of Invoke-WebRequest to reliably access
         response headers from error responses (PS5.1 + PS7 compatible).
     #>
@@ -434,23 +434,37 @@ function Get-ArcManagedIdentityToken {
         if (-not $wwwAuth) {
             $errBody = ""
             if ($httpResp) {
-                try { $errBody = [System.IO.StreamReader]::new($httpResp.GetResponseStream()).ReadToEnd() } catch {}
+                try {
+                    $errBody = [System.IO.StreamReader]::new($httpResp.GetResponseStream()).ReadToEnd()
+                } catch {}
             }
-            throw "Arc IMDS: No WWW-Authenticate header. Error: $($_.Exception.Message) | Body: $errBody"
+            throw "Arc IMDS: No WWW-Authenticate header received. Error: $($_.Exception.Message) | Body: $errBody"
         }
     }
 
     # -- Step 2: Extract key file path and read key --------------------------
-    # WWW-Authenticate format: Basic realm=C:\ProgramData\...\Tokens\<guid>.key
-    # Path is NOT quoted — try multiple patterns for forward compatibility
+    # WWW-Authenticate format used by Arc:
+    #   Basic realm=C:\ProgramData\AzureConnectedMachineAgent\Tokens\<guid>.key
+    # Note: path is NOT quoted - try both quoted and unquoted patterns
     $keyFile = [regex]::Match($wwwAuth, 'realm="([^"]+)"').Groups[1].Value
-    if (-not $keyFile) { $keyFile = [regex]::Match($wwwAuth, 'realm=([^\s,]+)').Groups[1].Value }
-    if (-not $keyFile) { $keyFile = [regex]::Match($wwwAuth, 'filename="([^"]+)"').Groups[1].Value }
-    if (-not $keyFile) { $keyFile = [regex]::Match($wwwAuth, 'filename=([^\s,]+)').Groups[1].Value }
-    if (-not $keyFile) { throw "Arc IMDS: Could not parse key file path from: $wwwAuth" }
-    if (-not (Test-Path $keyFile)) { throw "Arc IMDS: Key file not found: $keyFile" }
+    if (-not $keyFile) {
+        $keyFile = [regex]::Match($wwwAuth, 'realm=([^\s,]+)').Groups[1].Value
+    }
+    if (-not $keyFile) {
+        $keyFile = [regex]::Match($wwwAuth, 'filename="([^"]+)"').Groups[1].Value
+    }
+    if (-not $keyFile) {
+        $keyFile = [regex]::Match($wwwAuth, 'filename=([^\s,]+)').Groups[1].Value
+    }
+    if (-not $keyFile) {
+        throw "Arc IMDS: Could not parse key file path from WWW-Authenticate: $wwwAuth"
+    }
+    if (-not (Test-Path $keyFile)) {
+        throw "Arc IMDS: Key file not found: $keyFile"
+    }
 
-    # The .key file already contains a Base64-encoded challenge token — use directly
+    # The .key file already contains a Base64-encoded challenge token.
+    # Use the file content directly as the Basic auth credential — do NOT re-encode.
     $encoded = ([System.IO.File]::ReadAllText($keyFile)).Trim()
 
     # -- Step 3: Authenticated token request ---------------------------------
@@ -459,6 +473,7 @@ function Get-ArcManagedIdentityToken {
         $req2.Headers.Add("Metadata",      "true")
         $req2.Headers.Add("Authorization", "Basic $encoded")
         $req2.Method = "GET"
+
         $resp2  = $req2.GetResponse()
         $reader = [System.IO.StreamReader]::new($resp2.GetResponseStream())
         return ($reader.ReadToEnd() | ConvertFrom-Json).access_token
@@ -467,9 +482,12 @@ function Get-ArcManagedIdentityToken {
         $webEx3    = $_.Exception.InnerException -as [System.Net.WebException]
         if (-not $webEx3) { $webEx3 = $_.Exception -as [System.Net.WebException] }
         $httpResp3 = if ($webEx3) { $webEx3.Response -as [System.Net.HttpWebResponse] } else { $null }
-        $errBody3  = if ($httpResp3) {
-            try { [System.IO.StreamReader]::new($httpResp3.GetResponseStream()).ReadToEnd() } catch { "" }
-        } else { "" }
+        $errBody3  = ""
+        if ($httpResp3) {
+            try {
+                $errBody3 = [System.IO.StreamReader]::new($httpResp3.GetResponseStream()).ReadToEnd()
+            } catch {}
+        }
         throw "Arc IMDS: Step 3 failed: $($_.Exception.Message) | Body: $errBody3"
     }
 }
@@ -509,33 +527,50 @@ function Send-ToLogAnalytics {
 # ---------------------------------------------------------------------------
 # 1. CONFIGURATION
 # ---------------------------------------------------------------------------
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$scriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $scriptDir
 
 $configPath = Join-Path $scriptDir "config.json"
-if (-not (Test-Path $configPath)) { Write-Error "config.json not found: $configPath"; exit 1 }
+if (-not (Test-Path $configPath)) {
+    Write-Error "config.json not found: $configPath"
+    exit 1
+}
 
 $config = Get-Content $configPath | ConvertFrom-Json
 
+# PingCastle path: use absolute path directly, resolve relative path against script directory
 if ([System.IO.Path]::IsPathRooted($config.PingCastlePath)) {
     $executable = $config.PingCastlePath
 } else {
     $executable = Join-Path $scriptDir $config.PingCastlePath
 }
-if (-not (Test-Path $executable)) { Write-Error "PingCastle.exe not found: $executable"; exit 1 }
+
+if (-not (Test-Path $executable)) {
+    Write-Error "PingCastle.exe not found: $executable"
+    exit 1
+}
 
 $az = $config.AzureUpload
 
 # ---------------------------------------------------------------------------
-# 2. AZURE AUTHENTICATION
+# 2. AZURE AUTHENTICATION (once, before the domain loop)
 # ---------------------------------------------------------------------------
 Write-Host "`n=== Azure Authentication ===" -ForegroundColor Cyan
 
-# 2a. Arc Managed Identity token for Key Vault
+# 2a. Arc Managed Identity: token for Key Vault (challenge-response)
 Write-Host "  Requesting Key Vault token (Arc Managed Identity)..." -ForegroundColor Gray
 try {
     $kvToken = Get-ArcManagedIdentityToken -Resource "https://vault.azure.net"
     Write-Host "  Key Vault token received." -ForegroundColor Green
+
+    # Decode JWT payload to verify which identity the token belongs to
+    $parts   = $kvToken.Split('.')
+    $pad     = 4 - ($parts[1].Length % 4); if ($pad -lt 4) { $b64 = $parts[1] + ('=' * $pad) } else { $b64 = $parts[1] }
+    $b64     = $b64 -replace '-','+' -replace '_','/'
+    $decoded = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b64)) | ConvertFrom-Json
+    Write-Host "  [DEBUG] Token aud : $($decoded.aud)"  -ForegroundColor Magenta
+    Write-Host "  [DEBUG] Token oid : $($decoded.oid)"  -ForegroundColor Magenta
+    Write-Host "  [DEBUG] Token xms_mirid: $($decoded.xms_mirid)" -ForegroundColor Magenta
 }
 catch {
     Write-Error "Failed to get Key Vault token (Arc IMDS): $($_.Exception.Message)"
@@ -543,22 +578,27 @@ catch {
     exit 1
 }
 
-# 2b. Load certificate (PFX with private key) from Key Vault Secrets
+# 2b. Load certificate (PFX incl. private key) from Key Vault
 Write-Host "  Loading certificate '$($az.CertificateName)' from Key Vault..." -ForegroundColor Gray
 try {
     $secretUri  = "$($az.KeyVaultUrl.TrimEnd('/'))/secrets/$($az.CertificateName)?api-version=7.4"
-    $secretResp = Invoke-RestMethod -Uri $secretUri `
-        -Headers @{ Authorization = "Bearer $kvToken" } -ErrorAction Stop
+    Write-Host "  [DEBUG] Secret URI: $secretUri" -ForegroundColor Magenta
+    $secretResp = Invoke-RestMethod `
+        -Uri $secretUri `
+        -Headers @{ Authorization = "Bearer $kvToken" } `
+        -ErrorAction Stop
 
     $certBytes = [Convert]::FromBase64String($secretResp.value)
     $flags     = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bor
                  [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::UserKeySet
-    $cert      = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certBytes, "", $flags)
-
+    $cert      = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+        $certBytes, "", $flags
+    )
     Write-Host "  Certificate loaded: $($cert.Subject)" -ForegroundColor Green
     Write-Host "  Valid until:        $($cert.GetExpirationDateString())" -ForegroundColor Gray
+
     if ($cert.NotAfter -lt (Get-Date).AddDays(30)) {
-        Write-Warning "Certificate expires in less than 30 days — please renew."
+        Write-Warning "Certificate expires in less than 30 days! Please renew."
     }
 }
 catch {
@@ -566,58 +606,74 @@ catch {
     exit 1
 }
 
-# 2c. Build JWT client assertion (RS256, signed with certificate private key)
-Write-Host "  Building JWT client assertion..." -ForegroundColor Gray
+# 2c. Build and sign JWT client assertion
+Write-Host "  Building JWT client assertion (app-scr-pingcastlelogingest)..." -ForegroundColor Gray
 
 $now = [DateTimeOffset]::UtcNow
 $exp = $now.AddMinutes(10).ToUnixTimeSeconds()
 $nbf = $now.ToUnixTimeSeconds()
 
+# x5t: SHA-1 thumbprint of certificate as Base64Url
 $thumbBytes = [byte[]]($cert.Thumbprint -split '(..)' |
-    Where-Object { $_ } | ForEach-Object { [Convert]::ToByte($_, 16) })
-$x5t = ([Convert]::ToBase64String($thumbBytes)) -replace '\+','-' -replace '/','_' -replace '=',''
+    Where-Object { $_ } |
+    ForEach-Object { [Convert]::ToByte($_, 16) })
+$x5t = ([Convert]::ToBase64String($thumbBytes)) -replace '\+', '-' -replace '/', '_' -replace '=', ''
 
 $jwtHeader  = "{`"alg`":`"RS256`",`"typ`":`"JWT`",`"x5t`":`"$x5t`"}"
 $jwtPayload = "{" +
     "`"aud`":`"https://login.microsoftonline.com/$($az.TenantId)/oauth2/v2.0/token`"," +
-    "`"exp`":$exp,`"iss`":`"$($az.ClientId)`"," +
+    "`"exp`":$exp," +
+    "`"iss`":`"$($az.ClientId)`"," +
     "`"jti`":`"$([System.Guid]::NewGuid().ToString())`"," +
-    "`"nbf`":$nbf,`"sub`":`"$($az.ClientId)`"}"
+    "`"nbf`":$nbf," +
+    "`"sub`":`"$($az.ClientId)`"" +
+    "}"
 
 $sigInput = "$(ConvertTo-Base64Url $jwtHeader).$(ConvertTo-Base64Url $jwtPayload)"
 
-# GetRSAPrivateKey() is a C# extension method — call as static for PS5.1 compatibility
-# Works for both CNG keys (Key Vault default) and legacy CSP keys
+# GetRSAPrivateKey() is a C# extension method — must be called as static method in PowerShell
+# This works for both CNG keys (Key Vault) and legacy CSP keys
 $rsa = [System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::GetRSAPrivateKey($cert)
-if ($null -eq $rsa) { $rsa = $cert.PrivateKey -as [System.Security.Cryptography.RSACryptoServiceProvider] }
-if ($null -eq $rsa) { throw "Certificate private key not accessible. Check Exportable flag." }
+if ($null -eq $rsa) {
+    # Fallback for legacy CSP keys
+    $rsa = $cert.PrivateKey -as [System.Security.Cryptography.RSACryptoServiceProvider]
+}
+if ($null -eq $rsa) {
+    throw "Certificate private key is not accessible. Check Exportable flag and certificate format."
+}
 
 if ($rsa -is [System.Security.Cryptography.RSACryptoServiceProvider]) {
+    # Legacy CSP path
     $sigBytes = $rsa.SignData(
         [System.Text.Encoding]::ASCII.GetBytes($sigInput),
-        [System.Security.Cryptography.CryptoConfig]::MapNameToOID("SHA256"))
+        [System.Security.Cryptography.CryptoConfig]::MapNameToOID("SHA256")
+    )
 } else {
+    # CNG path (RSACng) — supports the modern API
     $sigBytes = $rsa.SignData(
         [System.Text.Encoding]::ASCII.GetBytes($sigInput),
         [System.Security.Cryptography.HashAlgorithmName]::SHA256,
-        [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+        [System.Security.Cryptography.RSASignaturePadding]::Pkcs1
+    )
 }
-$sig = ([Convert]::ToBase64String($sigBytes)) -replace '\+','-' -replace '/','_' -replace '=',''
+$sig = ([Convert]::ToBase64String($sigBytes)) -replace '\+', '-' -replace '/', '_' -replace '=', ''
 $jwt = "$sigInput.$sig"
 
-# 2d. Exchange JWT for Log Ingestion API token
+# 2d. Get access token for Log Ingestion API
 Write-Host "  Requesting ingestion token (certificate auth)..." -ForegroundColor Gray
 try {
+    $tokenBody = @{
+        grant_type            = "client_credentials"
+        client_id             = $az.ClientId
+        client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+        client_assertion      = $jwt
+        scope                 = "https://monitor.azure.com/.default"
+    }
     $ingestionToken = (Invoke-RestMethod `
         -Uri "https://login.microsoftonline.com/$($az.TenantId)/oauth2/v2.0/token" `
         -Method POST `
-        -Body @{
-            grant_type            = "client_credentials"
-            client_id             = $az.ClientId
-            client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-            client_assertion      = $jwt
-            scope                 = "https://monitor.azure.com/.default"
-        } -ErrorAction Stop).access_token
+        -Body $tokenBody `
+        -ErrorAction Stop).access_token
     Write-Host "  Ingestion token received." -ForegroundColor Green
 }
 catch {
@@ -628,28 +684,38 @@ catch {
 Write-Host "=== Authentication successful ===" -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# 3. PER DOMAIN: RUN PINGCASTLE, PARSE XML, UPLOAD
+# 3. PER DOMAIN: RUN PINGCASTLE, CREATE JSON, UPLOAD
 # ---------------------------------------------------------------------------
 foreach ($domain in $config.Domains) {
     Write-Host "`n--- Domain: $domain ---" -ForegroundColor Cyan
 
+    # 3a. Run PingCastle
     Write-Host "  Running PingCastle healthcheck..." -ForegroundColor Gray
     & $executable --healthcheck --server $domain --no-enum-limit --level Full
 
+    # 3b. Find most recent XML for this domain
     $xmlFile = Get-ChildItem -Path $scriptDir -Filter "*$($domain)*.xml" |
-               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+               Sort-Object LastWriteTime -Descending |
+               Select-Object -First 1
 
-    if (-not $xmlFile) { Write-Warning "No XML found for $domain — skipping."; continue }
+    if (-not $xmlFile) {
+        Write-Warning "No XML found for $domain - skipping."
+        continue
+    }
     Write-Host "  XML: $($xmlFile.Name)" -ForegroundColor Gray
 
     try {
         [xml]$xmlData = Get-Content $xmlFile.FullName -Encoding UTF8
-        $hc       = $xmlData.HealthcheckData
-        $baseName = $xmlFile.FullName -replace '\.xml$', ''
-        $scanDate = $hc.GenerationDate
+        $hc        = $xmlData.HealthcheckData
+        $baseName  = $xmlFile.FullName -replace '\.xml$', ''
+        $scanDate  = $hc.GenerationDate
 
-        # -- Summary ----------------------------------------------------------
+        # -------------------------------------------------------------------
+        # 3c. SUMMARY - one object per domain/scan
+        # -------------------------------------------------------------------
         $summary = [PSCustomObject]@{
+
+            # Metadata
             TimeGenerated                  = $scanDate
             DomainFQDN                     = $hc.DomainFQDN
             NetBIOSName                    = $hc.NetBIOSName
@@ -658,16 +724,22 @@ foreach ($domain in $config.Domains) {
             DomainCreation                 = $hc.DomainCreation
             EngineVersion                  = $hc.EngineVersion
             ScanLevel                      = $hc.Level
+
+            # Scores
             GlobalScore                    = [int]$hc.GlobalScore
             StaleObjectsScore              = [int]$hc.StaleObjectsScore
             PrivilegiedGroupScore          = [int]$hc.PrivilegiedGroupScore
             TrustScore                     = [int]$hc.TrustScore
             AnomalyScore                   = [int]$hc.AnomalyScore
             MaturityLevel                  = [int]$hc.MaturityLevel
+
+            # Domain structure
             NumberOfDC                     = [int]$hc.NumberOfDC
             DomainFunctionalLevel          = [int]$hc.DomainFunctionalLevel
             ForestFunctionalLevel          = [int]$hc.ForestFunctionalLevel
             SchemaVersion                  = [int]$hc.SchemaVersion
+
+            # Security indicators
             KrbtgtLastChangeDate           = $hc.KrbtgtLastChangeDate
             KrbtgtLastVersion              = [int]$hc.KrbtgtLastVersion
             MachineAccountQuota            = [int]$hc.MachineAccountQuota
@@ -686,6 +758,8 @@ foreach ($domain in $config.Domains) {
             NewLAPSInstalled               = ($null -ne $hc.NewLAPSInstalled -and $hc.NewLAPSInstalled -ne '')
             SCCMInstalled                  = ($null -ne $hc.SCCMInstalled -and $hc.SCCMInstalled -ne '')
             HasKdsRootKey                  = ($hc.HasKdsRootKey -eq 'true')
+
+            # User statistics
             Users_Total                    = [int]$hc.UserAccountData.Number
             Users_Enabled                  = [int]$hc.UserAccountData.NumberEnabled
             Users_Disabled                 = [int]$hc.UserAccountData.NumberDisabled
@@ -699,6 +773,8 @@ foreach ($domain in $config.Domains) {
             Users_NoPreAuth                = [int]$hc.UserAccountData.NumberNoPreAuth
             Users_SidHistory               = [int]$hc.UserAccountData.NumberSidHistory
             Users_DesEnabled               = [int]$hc.UserAccountData.NumberDesEnabled
+
+            # Computer statistics
             Computers_Total                = [int]$hc.ComputerAccountData.Number
             Computers_Enabled              = [int]$hc.ComputerAccountData.NumberEnabled
             Computers_Disabled             = [int]$hc.ComputerAccountData.NumberDisabled
@@ -711,6 +787,8 @@ foreach ($domain in $config.Domains) {
             Computers_NewLAPS_Active       = [int]$hc.ComputerAccountData.NumberLAPSNewActive
             Computers_SidHistory           = [int]$hc.ComputerAccountData.NumberSidHistory
             Computers_TrustedForDelegation = [int]$hc.ComputerAccountData.NumberEnabledTrustedToAuthenticateForDelegation
+
+            # Findings summary
             FindingsCount_Total            = ($hc.RiskRules.HealthcheckRiskRule | Where-Object { [int]$_.Points -gt 0  } | Measure-Object).Count
             FindingsCount_Critical         = ($hc.RiskRules.HealthcheckRiskRule | Where-Object { [int]$_.Points -ge 15 } | Measure-Object).Count
             FindingsCount_High             = ($hc.RiskRules.HealthcheckRiskRule | Where-Object { [int]$_.Points -ge 10 -and [int]$_.Points -lt 15 } | Measure-Object).Count
@@ -722,17 +800,22 @@ foreach ($domain in $config.Domains) {
         ConvertTo-Json -InputObject @($summary) -Depth 5 | Out-File $summaryJson -Encoding utf8
         Write-Host "  Summary JSON created:  $([System.IO.Path]::GetFileName($summaryJson))" -ForegroundColor White
 
-        # -- Findings ---------------------------------------------------------
+        # -------------------------------------------------------------------
+        # 3d. FINDINGS - one object per RiskRule with Points > 0
+        # -------------------------------------------------------------------
         $findings = [System.Collections.Generic.List[PSCustomObject]]::new()
+
         foreach ($rule in $hc.RiskRules.HealthcheckRiskRule) {
             $points = [int]$rule.Points
             if ($points -eq 0) { continue }
+
             $severity = switch ($points) {
                 { $_ -ge 15 } { "Critical"; break }
                 { $_ -ge 10 } { "High";     break }
                 { $_ -ge 5  } { "Medium";   break }
                 default        { "Low" }
             }
+
             $findings.Add([PSCustomObject]@{
                 TimeGenerated = $scanDate
                 DomainFQDN    = $hc.DomainFQDN
@@ -746,17 +829,59 @@ foreach ($domain in $config.Domains) {
                 Details       = if ($rule.Details) { $rule.Details } else { "" }
             })
         }
+
         $findings     = $findings | Sort-Object Points -Descending
         $findingsJson = $baseName + "_findings.json"
         ConvertTo-Json -InputObject @($findings) -Depth 5 | Out-File $findingsJson -Encoding utf8
         Write-Host "  Findings JSON created: $([System.IO.Path]::GetFileName($findingsJson)) ($($findings.Count) findings)" -ForegroundColor White
 
-        # -- Upload -----------------------------------------------------------
+        # -------------------------------------------------------------------
+        # 3e. UPLOAD to Log Analytics
+        # -------------------------------------------------------------------
         Write-Host "  Uploading to Log Analytics..." -ForegroundColor Gray
-        Send-ToLogAnalytics -JsonFilePath $summaryJson  -DceUrl $az.DceIngestionUrl `
-            -DcrImmutableId $az.DcrSummaryId  -StreamName "Custom-PingCastle_Summary_CL"  -BearerToken $ingestionToken
-        Send-ToLogAnalytics -JsonFilePath $findingsJson -DceUrl $az.DceIngestionUrl `
-            -DcrImmutableId $az.DcrFindingsId -StreamName "Custom-PingCastle_Findings_CL" -BearerToken $ingestionToken
+
+        Send-ToLogAnalytics `
+            -JsonFilePath   $summaryJson `
+            -DceUrl         $az.DceIngestionUrl `
+            -DcrImmutableId $az.DcrSummaryId `
+            -StreamName     "Custom-PingCastle_Summary_CL" `
+            -BearerToken    $ingestionToken
+
+        Send-ToLogAnalytics `
+            -JsonFilePath   $findingsJson `
+            -DceUrl         $az.DceIngestionUrl `
+            -DcrImmutableId $az.DcrFindingsId `
+            -StreamName     "Custom-PingCastle_Findings_CL" `
+            -BearerToken    $ingestionToken
+
+        # -------------------------------------------------------------------
+        # 3f. ARCHIVE JSON files / CLEAN UP XML and HTML
+        # -------------------------------------------------------------------
+        $archiveDir = Join-Path $scriptDir "Archiv"
+        if (-not (Test-Path $archiveDir)) {
+            New-Item -ItemType Directory -Path $archiveDir | Out-Null
+            Write-Host "  Archive folder created: $archiveDir" -ForegroundColor Gray
+        }
+
+        $datePrefix = (Get-Date).ToString("yyyyMMdd")
+
+        $archivedSummary  = Join-Path $archiveDir ($datePrefix + "_" + [System.IO.Path]::GetFileName($summaryJson))
+        $archivedFindings = Join-Path $archiveDir ($datePrefix + "_" + [System.IO.Path]::GetFileName($findingsJson))
+
+        Move-Item -Path $summaryJson  -Destination $archivedSummary  -Force
+        Move-Item -Path $findingsJson -Destination $archivedFindings -Force
+        Write-Host "  JSON archived: $([System.IO.Path]::GetFileName($archivedSummary))" -ForegroundColor Gray
+        Write-Host "  JSON archived: $([System.IO.Path]::GetFileName($archivedFindings))" -ForegroundColor Gray
+
+        # Delete PingCastle XML and HTML output
+        Remove-Item -Path $xmlFile.FullName -Force
+        Write-Host "  Deleted: $($xmlFile.Name)" -ForegroundColor Gray
+
+        $htmlFile = $xmlFile.FullName -replace '\.xml$', '.html'
+        if (Test-Path $htmlFile) {
+            Remove-Item -Path $htmlFile -Force
+            Write-Host "  Deleted: $([System.IO.Path]::GetFileName($htmlFile))" -ForegroundColor Gray
+        }
     }
     catch {
         Write-Error "Error processing $domain : $($_.Exception.Message)"
@@ -764,6 +889,7 @@ foreach ($domain in $config.Domains) {
 }
 
 Write-Host "`n=== All domains processed ===" -ForegroundColor Cyan
+
 ```
 
 ---
