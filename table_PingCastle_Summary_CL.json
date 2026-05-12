@@ -1,8 +1,4 @@
-{
-  "properties": {
-    "schema": {
-      "name": "PingCastle_Summary_CL",
-      "columns": [
+[
         { "name": "TimeGenerated", "type": "dateTime", "description": "Scan timestamp (GenerationDate from XML)" },
         { "name": "DomainFQDN", "type": "string", "description": "e.g., adm.ds.fhnw.ch" },
         { "name": "NetBIOSName", "type": "string", "description": "e.g., ADM" },
@@ -70,8 +66,4 @@
         { "name": "FindingsCount_Medium", "type": "int", "description": "Findings with 5-9 points" },
         { "name": "FindingsCount_Low", "type": "int", "description": "Findings with 1-4 points" }
       ]
-    },
-    "retentionInDays": 90,
-    "totalRetentionInDays": 365
-  }
-}
+
