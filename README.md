@@ -322,7 +322,8 @@ One row per active finding (Points > 0) per domain per scan.
 ## Sentinel Workbook
 - Create a New Workbook and import the SentinelWorkbook.json
 
-<img width="784" height="1354" alt="Gemini_Generated_Image_svbbpisvbbpisvbb" src="https://github.com/user-attachments/assets/0f674225-4227-4fde-ad82-54986f406788" />
+<img width="783" height="1291" alt="image" src="https://github.com/user-attachments/assets/bd920b18-65b1-4a43-9ce4-f40f6c76c0a7" />
+
 
 
 ---
