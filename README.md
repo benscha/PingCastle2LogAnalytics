@@ -330,7 +330,7 @@ One row per active finding (Points > 0) per domain per scan.
 
 ## KQL Analysis
 - Monitoring Increasing Scores on Category Level
-  ```kql
+```kql
   PingCastle_Summary_CL
 | extend 
     GlobalScore = todouble(GlobalScore),
@@ -368,7 +368,7 @@ One row per active finding (Points > 0) per domain per scan.
 // Only trigger an alert if at least one score has actually increased
 | where array_length(IncreasedScoresList) > 0
 | project TimeGenerated, DomainFQDN, IncreasedScoresList
-  ```
+```
 
 
 ---
