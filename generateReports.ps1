@@ -511,4 +511,4 @@ foreach ($domain in $config.Domains) {
     }
 }
 
-Write-Host "`n=== All domains processed ===" -ForegroundColor Cyan
+Write-Host "`n=== All domains processed ===" -ForegroundColor Cyan 
