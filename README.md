@@ -363,6 +363,13 @@ The App Registration is missing **Monitoring Metrics Publisher** role on the DCR
 
 ---
 
+## known Bugs 🪳
+
+- The Details Field shows only square brackets 😵‍💫 i recommend to Transform this Field away in your DCR
+- | project-away Details
+
+---
+
 ## Scripts
 
 ### `generateReports.ps1`
