@@ -476,6 +476,35 @@ foreach ($domain in $config.Domains) {
             -DcrImmutableId $az.DcrFindingsId `
             -StreamName     "Custom-PingCastle_Findings_CL" `
             -BearerToken    $ingestionToken
+
+        # -------------------------------------------------------------------
+        # 3f. ARCHIVE JSON files / CLEAN UP XML and HTML
+        # -------------------------------------------------------------------
+        $archiveDir = Join-Path $scriptDir "Archiv"
+        if (-not (Test-Path $archiveDir)) {
+            New-Item -ItemType Directory -Path $archiveDir | Out-Null
+            Write-Host "  Archive folder created: $archiveDir" -ForegroundColor Gray
+        }
+
+        $datePrefix = (Get-Date).ToString("yyyyMMdd")
+
+        $archivedSummary  = Join-Path $archiveDir ($datePrefix + "_" + [System.IO.Path]::GetFileName($summaryJson))
+        $archivedFindings = Join-Path $archiveDir ($datePrefix + "_" + [System.IO.Path]::GetFileName($findingsJson))
+
+        Move-Item -Path $summaryJson  -Destination $archivedSummary  -Force
+        Move-Item -Path $findingsJson -Destination $archivedFindings -Force
+        Write-Host "  JSON archived: $([System.IO.Path]::GetFileName($archivedSummary))" -ForegroundColor Gray
+        Write-Host "  JSON archived: $([System.IO.Path]::GetFileName($archivedFindings))" -ForegroundColor Gray
+
+        # Delete PingCastle XML and HTML output
+        Remove-Item -Path $xmlFile.FullName -Force
+        Write-Host "  Deleted: $($xmlFile.Name)" -ForegroundColor Gray
+
+        $htmlFile = $xmlFile.FullName -replace '\.xml$', '.html'
+        if (Test-Path $htmlFile) {
+            Remove-Item -Path $htmlFile -Force
+            Write-Host "  Deleted: $([System.IO.Path]::GetFileName($htmlFile))" -ForegroundColor Gray
+        }
     }
     catch {
         Write-Error "Error processing $domain : $($_.Exception.Message)"
