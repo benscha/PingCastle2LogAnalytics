@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "schema": {
+      "name": "PingCastle_Findings_CL",
+      "columns": [
+        { "name": "TimeGenerated", "type": "dateTime", "description": "Scan timestamp" },
+        { "name": "DomainFQDN",    "type": "string",   "description": "e.g., adm.ds.fhnw.ch" },
+        { "name": "NetBIOSName",   "type": "string",   "description": "e.g., ADM" },
+        { "name": "RiskId",        "type": "string",   "description": "Unique finding ID, e.g., A-DC-Spooler" },
+        { "name": "Category",      "type": "string",   "description": "StaleObjects | Anomalies | Trusts | PrivilegedAccounts" },
+        { "name": "Model",         "type": "string",   "description": "e.g., PassTheCredential, AccountTakeOver" },
+        { "name": "Points",        "type": "int",      "description": "Finding score (only > 0 present)" },
+        { "name": "Severity",      "type": "string",   "description": "Critical (>=15) | High (10-14) | Medium (5-9) | Low (1-4)" },
+        { "name": "Rationale",     "type": "string",   "description": "Description text of the finding" },
+        { "name": "Details",       "type": "string",   "description": "Additional technical details (can be empty)" }
+      ]
+    },
+    "retentionInDays": 90,
+    "totalRetentionInDays": 365
+  }
+}
