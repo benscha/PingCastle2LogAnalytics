@@ -1,6 +1,6 @@
 # PingCastle2LogAnalytics
 
-Automated pipeline that runs [PingCastle](https://www.pingcastle.com/) Active Directory health checks against one or more domains, parses the XML output, and ships structured data to **Azure Log Analytics** via the Log Ingestion API — ready for Microsoft Sentinel dashboards and analytics rules.
+Automated pipeline that runs [PingCastle](https://www.pingcastle.com/) Active Directory health checks against one or more domains, parses the XML output, and ships structured data to **Azure Log Analytics** via the Log Ingestion API ready for Microsoft Sentinel dashboards and analytics rules.
 
 ---
 
