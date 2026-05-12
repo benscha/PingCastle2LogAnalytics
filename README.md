@@ -1,4 +1,4 @@
-# PingCastle2LogAnalytics
+# PingCastle Report to LogAnalytics Table
 
 Automated pipeline that runs PingCastle Active Directory health checks against one or more domains, parses the XML output, and ships structured data to Azure Log Analytics via the Log Ingestion API.
 Most organisations run PingCastle manually and review the HTML report in isolation. This project turns those snapshots into a continuous time-series stored in Log Analytics, which unlocks three things that a standalone report cannot provide:
