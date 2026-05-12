@@ -327,6 +327,51 @@ One row per active finding (Points > 0) per domain per scan.
 
 ---
 
+
+## KQL Analysis
+- Monitoring Increasing Scores on Category Level
+  ```kql
+  PingCastle_Summary_CL
+| extend 
+    GlobalScore = todouble(GlobalScore),
+    StaleObjectsScore = todouble(StaleObjectsScore),
+    PrivilegiedGroupScore = todouble(PrivilegiedGroupScore),
+    TrustScore = todouble(TrustScore),
+    AnomalyScore = todouble(AnomalyScore)
+| partition by DomainFQDN (
+    sort by TimeGenerated desc
+    | take 2
+    | sort by TimeGenerated asc
+    | serialize 
+    | extend 
+        prev_GlobalScore = prev(GlobalScore),
+        prev_StaleObjectsScore = prev(StaleObjectsScore),
+        prev_PrivilegiedGroupScore = prev(PrivilegiedGroupScore),
+        prev_TrustScore = prev(TrustScore),
+        prev_AnomalyScore = prev(AnomalyScore)
+)
+// Retrieve the most recent record per domain, which now includes the comparison values
+| summarize arg_max(TimeGenerated, *) by DomainFQDN
+// Create individual strings for each score increase
+| extend 
+    inc_GS = iff(GlobalScore > prev_GlobalScore, strcat("GlobalScore (", prev_GlobalScore, " -> ", GlobalScore, ")"), ""),
+    inc_SS = iff(StaleObjectsScore > prev_StaleObjectsScore, strcat("StaleObjectsScore (", prev_StaleObjectsScore, " -> ", StaleObjectsScore, ")"), ""),
+    inc_PS = iff(PrivilegiedGroupScore > prev_PrivilegiedGroupScore, strcat("PrivilegiedGroupScore (", prev_PrivilegiedGroupScore, " -> ", PrivilegiedGroupScore, ")"), ""),
+    inc_TS = iff(TrustScore > prev_TrustScore, strcat("TrustScore (", prev_TrustScore, " -> ", TrustScore, ")"), ""),
+    inc_AS = iff(AnomalyScore > prev_AnomalyScore, strcat("AnomalyScore (", prev_AnomalyScore, " -> ", AnomalyScore, ")"), "")
+// Pack all results into an array and remove empty entries
+| extend IncreasedScores = pack_array(inc_GS, inc_SS, inc_PS, inc_TS, inc_AS)
+| mv-apply IncreasedScores to typeof(string) on (
+    where isnotempty(IncreasedScores)
+    | summarize IncreasedScoresList = make_list(IncreasedScores)
+)
+// Only trigger an alert if at least one score has actually increased
+| where array_length(IncreasedScoresList) > 0
+| project TimeGenerated, DomainFQDN, IncreasedScoresList
+  ```
+
+
+---
 ## Troubleshooting
 
 ### `Arc IMDS: No WWW-Authenticate header received`
