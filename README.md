@@ -1,6 +1,11 @@
 # PingCastle2LogAnalytics
 
-Automated pipeline that runs [PingCastle](https://www.pingcastle.com/) Active Directory health checks against one or more domains, parses the XML output, and ships structured data to **Azure Log Analytics** via the Log Ingestion API ready for Microsoft Sentinel dashboards and analytics rules.
+Automated pipeline that runs PingCastle Active Directory health checks against one or more domains, parses the XML output, and ships structured data to Azure Log Analytics via the Log Ingestion API.
+Most organisations run PingCastle manually and review the HTML report in isolation. This project turns those snapshots into a continuous time-series stored in Log Analytics, which unlocks three things that a standalone report cannot provide:
+
+Multi-domain visibility — scan all your domains in a single run and compare scores, findings, and account statistics side by side in one dashboard, without opening multiple HTML files.
+Trend analysis — because every scan writes a new row, you can chart how your GlobalScore, MaturityLevel, or any other metric evolves over weeks and months and immediately see whether remediations are having the desired effect.
+Automated alerting — define Microsoft Sentinel analytics rules or Azure Monitor alert rules that fire when a score increases, a new Critical finding appears, or a key indicator changes (e.g. MachineAccountQuota is no longer 0, or a new domain is discovered). Your team gets notified without anyone having to remember to run a manual check.
 
 ---
 
