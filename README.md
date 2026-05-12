@@ -374,20 +374,20 @@ One row per active finding (Points > 0) per domain per scan.
 - Identify new Issues wich where no present in the last Scan
 
 ```kql
-// 1. Identify the last two scan timestamps per domain
+// Identify the last two scan timestamps per domain
 let ScanDates = PingCastle_Findings_CL
 | summarize by DomainFQDN, TimeGenerated
 | sort by DomainFQDN asc, TimeGenerated desc
 | serialize 
 | extend ScanRank = row_number(1, DomainFQDN != prev(DomainFQDN))
 | where ScanRank <= 2;
-// 2. Retrieve all findings from the most recent scan (Rank 1)
+// Retrieve all findings from the most recent scan (Rank 1)
 let LatestFindings = PingCastle_Findings_CL
 | join kind=inner (ScanDates | where ScanRank == 1) on DomainFQDN, TimeGenerated;
-// 3. Retrieve all findings from the previous scan (Rank 2)
+// Retrieve all findings from the previous scan (Rank 2)
 let PreviousFindings = PingCastle_Findings_CL
 | join kind=inner (ScanDates | where ScanRank == 2) on DomainFQDN, TimeGenerated;
-// 4. Filter for RiskIds that only exist in the latest scan (Left Anti Join)
+// Filter for RiskIds that only exist in the latest scan (Left Anti Join)
 LatestFindings
 | join kind=leftanti PreviousFindings on DomainFQDN, RiskId
 | project TimeGenerated, DomainFQDN, RiskId, Severity, Category, Model, Rationale
