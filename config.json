@@ -1,0 +1,17 @@
+{
+    "Domains": [
+        "domain1.corp.example.com",
+        "domain2.corp.example.com"
+    ],
+    "PingCastlePath": "C:\\Tools\\PingCastle\\PingCastle.exe",
+
+    "AzureUpload": {
+        "TenantId":        "<your-tenant-id>",
+        "ClientId":        "<app-registration-client-id>",
+        "KeyVaultUrl":     "https://<your-keyvault-name>.vault.azure.net",
+        "CertificateName": "<certificate-name-in-keyvault>",
+        "DceIngestionUrl": "https://<dce-name>.<region>.ingest.monitor.azure.com",
+        "DcrSummaryId":    "dcr-<immutable-id-of-summary-dcr>",
+        "DcrFindingsId":   "dcr-<immutable-id-of-findings-dcr>"
+    }
+}
