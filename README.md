@@ -180,6 +180,7 @@ PingCastle2LogAnalytics/
 ├── config.json                      # Configuration (fill in your values)
 ├── table_PingCastle_Summary_CL.json # Table schema for REST API
 └── table_PingCastle_Findings_CL.json
+└── SentinelWorkbook.json
 ```
 
 ---
