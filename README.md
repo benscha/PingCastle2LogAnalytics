@@ -485,7 +485,7 @@ function Get-ArcManagedIdentityToken {
     $uri = "http://localhost:40342/metadata/identity/oauth2/token" +
            "?api-version=2020-06-01&resource=$Resource"
 
-    # -- Step 1: Challenge request -------------------------------------------
+    # -- Challenge request -------------------------------------------
     $req1 = [System.Net.HttpWebRequest]::Create($uri)
     $req1.Headers.Add("Metadata", "true")
     $req1.Method = "GET"
@@ -518,7 +518,7 @@ function Get-ArcManagedIdentityToken {
         }
     }
 
-    # -- Step 2: Extract key file path and read key --------------------------
+    # -- Extract key file path and read key --------------------------
     # WWW-Authenticate format used by Arc:
     #   Basic realm=C:\ProgramData\AzureConnectedMachineAgent\Tokens\<guid>.key
     # Note: path is NOT quoted - try both quoted and unquoted patterns
@@ -601,7 +601,7 @@ function Send-ToLogAnalytics {
 }
 
 # ---------------------------------------------------------------------------
-# 1. CONFIGURATION
+# CONFIGURATION
 # ---------------------------------------------------------------------------
 $scriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $scriptDir
@@ -629,7 +629,7 @@ if (-not (Test-Path $executable)) {
 $az = $config.AzureUpload
 
 # ---------------------------------------------------------------------------
-# 2. AZURE AUTHENTICATION (once, before the domain loop)
+# AZURE AUTHENTICATION (once, before the domain loop)
 # ---------------------------------------------------------------------------
 Write-Host "`n=== Azure Authentication ===" -ForegroundColor Cyan
 
@@ -682,7 +682,7 @@ catch {
     exit 1
 }
 
-# 2c. Build and sign JWT client assertion
+# Build and sign JWT client assertion
 Write-Host "  Building JWT client assertion (app-scr-pingcastlelogingest)..." -ForegroundColor Gray
 
 $now = [DateTimeOffset]::UtcNow
@@ -760,7 +760,7 @@ catch {
 Write-Host "=== Authentication successful ===" -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# 3. PER DOMAIN: RUN PINGCASTLE, CREATE JSON, UPLOAD
+# PER DOMAIN: RUN PINGCASTLE, CREATE JSON, UPLOAD
 # ---------------------------------------------------------------------------
 foreach ($domain in $config.Domains) {
     Write-Host "`n--- Domain: $domain ---" -ForegroundColor Cyan
@@ -877,7 +877,7 @@ foreach ($domain in $config.Domains) {
         Write-Host "  Summary JSON created:  $([System.IO.Path]::GetFileName($summaryJson))" -ForegroundColor White
 
         # -------------------------------------------------------------------
-        # 3d. FINDINGS - one object per RiskRule with Points > 0
+        # FINDINGS - one object per RiskRule with Points > 0
         # -------------------------------------------------------------------
         $findings = [System.Collections.Generic.List[PSCustomObject]]::new()
 
@@ -912,7 +912,7 @@ foreach ($domain in $config.Domains) {
         Write-Host "  Findings JSON created: $([System.IO.Path]::GetFileName($findingsJson)) ($($findings.Count) findings)" -ForegroundColor White
 
         # -------------------------------------------------------------------
-        # 3e. UPLOAD to Log Analytics
+        # UPLOAD to Log Analytics
         # -------------------------------------------------------------------
         Write-Host "  Uploading to Log Analytics..." -ForegroundColor Gray
 
@@ -931,7 +931,7 @@ foreach ($domain in $config.Domains) {
             -BearerToken    $ingestionToken
 
         # -------------------------------------------------------------------
-        # 3f. ARCHIVE JSON files / CLEAN UP XML and HTML
+        # ARCHIVE JSON files / CLEAN UP XML and HTML
         # -------------------------------------------------------------------
         $archiveDir = Join-Path $scriptDir "Archiv"
         if (-not (Test-Path $archiveDir)) {
