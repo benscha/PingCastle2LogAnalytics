@@ -1,14 +1,14 @@
 [
   {
-    "TimeGenerated": "2026-05-12T13:28:52.088Z",
-    "DomainFQDN": "beispiel.domain.local",
-    "NetBIOSName": "BEISPIEL",
-    "Points": 15,
-    "Severity": "Critical",
-    "Category": "Anomalies",
-    "Model": "TemporaryAdmins",
-    "RiskId": "A-AdminSDHolder",
-    "Rationale": "Beschreibung des Sicherheitsrisikos hier",
-    "Details": "Zusaetzliche technische Details oder Listen"
+	"TimeGenerated": "2026-05-12T13:28:52.088Z",
+	"DomainFQDN": "beispiel.domain.local",
+	"NetBIOSName": "BEISPIEL",
+	"Points": 15,
+	"Severity": "Critical",
+	"Category": "Anomalies",
+	"Model": "TemporaryAdmins",
+	"RiskId": "A-AdminSDHolder",
+	"Rationale": "Beschreibung des Sicherheitsrisikos hier",
+	"Details": "Zusaetzliche technische Details oder Listen"
   }
 ]
