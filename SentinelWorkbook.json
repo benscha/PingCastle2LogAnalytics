@@ -1,640 +1,640 @@
 {
-  "version": "Notebook/1.0",
-  "items": [
-    {
-      "type": 9,
-      "content": {
-        "version": "KqlParameterItem/1.0",
-        "parameters": [
-          {
-            "id": "a1b2c3d4-0001-0001-0001-000000000001",
-            "version": "KqlParameterItem/1.0",
-            "name": "TimeRange",
-            "label": "Time Range",
-            "type": 4,
-            "value": {
-              "durationMs": 2592000000
-            },
-            "typeSettings": {
-              "selectableValues": [
-                {
-                  "durationMs": 604800000
-                },
-                {
-                  "durationMs": 2592000000
-                },
-                {
-                  "durationMs": 7776000000
-                },
-                {
-                  "durationMs": 31536000000
-                }
-              ],
-              "allowCustom": true
-            }
-          }
-        ],
-        "style": "pills",
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "name": "parameters"
-    },
-    {
-      "type": 1,
-      "content": {
-        "json": "# 🛡️ Active Directory Security — PingCastle Dashboard\n\nScores range from **0** (best) to **100** (worst). The Global Risk Score equals the maximum of the four category scores.\n\n---"
-      },
-      "name": "title"
-    },
-    {
-      "type": 1,
-      "content": {
-        "json": "## 🌐 Overall Average Domain Risk Score\n_Average across all domains — based on the latest scan per domain._"
-      },
-      "name": "section-header-overall"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "union\n  (PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = round(avg(GlobalScore), 0)          | project Name = 'Avg Risk Score',    Value = toint(v)),\n  (PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = dcount(DomainFQDN)                  | project Name = 'Domains Scanned',   Value = toint(v)),\n  (PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_Critical)           | project Name = 'Critical Findings', Value = toint(v)),\n  (PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_High)               | project Name = 'High Findings',     Value = toint(v)),\n  (PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_Medium)             | project Name = 'Medium Findings',   Value = toint(v)),\n  (PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_Low)                | project Name = 'Low Findings',      Value = toint(v))",
-        "size": 4,
-        "title": "KPIs — Latest Scan per Domain (all time)",
-        "timeContext": {
-          "durationMs": 31536000000
-        },
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "tiles",
-        "tileSettings": {
-          "showBorder": true,
-          "titleContent": {
-            "columnMatch": "Name",
-            "formatter": 1
-          },
-          "leftContent": {
-            "columnMatch": "Value",
-            "formatter": 4,
-            "numberFormat": {
-              "unit": 0,
-              "options": {
-                "style": "decimal",
-                "maximumFractionDigits": 0
-              }
-            }
-          }
-        }
-      },
-      "customWidth": "100",
-      "name": "kpi-tiles"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "PingCastle_Summary_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN\n| project\n    Domain               = DomainFQDN,\n    ['Global Score']     = GlobalScore,\n    ['Stale Objects']    = StaleObjectsScore,\n    ['Priv. Accounts']   = PrivilegiedGroupScore,\n    Trusts               = TrustScore,\n    Anomalies            = AnomalyScore,\n    ['Maturity Level']   = MaturityLevel,\n    Critical             = FindingsCount_Critical,\n    High                 = FindingsCount_High,\n    Medium               = FindingsCount_Medium,\n    Low                  = FindingsCount_Low,\n    ['Last Scan']        = TimeGenerated\n| order by ['Global Score'] desc",
-        "size": 4,
-        "title": "Domain Score Overview",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table",
-        "gridSettings": {
-          "formatters": [
-            {
-              "columnMatch": "Global Score",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "30",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "50",
-                    "representation": "orange",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "75",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Stale Objects",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "30",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "50",
-                    "representation": "orange",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "75",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Priv. Accounts",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "30",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "50",
-                    "representation": "orange",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "75",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Trusts",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "30",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "50",
-                    "representation": "orange",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "75",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Anomalies",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "30",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "50",
-                    "representation": "orange",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "75",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Critical",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "1",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "High",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "1",
-                    "representation": "orange",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Maturity Level",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "red",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "3",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "4",
-                    "representation": "green",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            }
-          ],
-          "rowLimit": 50,
-          "filter": true
-        }
-      },
-      "customWidth": "100",
-      "name": "domain-overview-grid"
-    },
-    {
-      "type": 1,
-      "content": {
-        "json": "---\n## 📈 Score Trends — Last 52 Weeks\n_Weekly aggregation · max 52 data points per domain · each line = one domain_"
-      },
-      "name": "section-header-trends"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "PingCastle_Summary_CL\n| where TimeGenerated > ago(364d)\n| summarize GlobalScore = round(avg(GlobalScore), 1) by bin(TimeGenerated, 7d), DomainFQDN\n| union (\n    PingCastle_Summary_CL\n    | where TimeGenerated > ago(364d)\n    | summarize GlobalScore = round(avg(GlobalScore), 1) by bin(TimeGenerated, 7d)\n    | extend DomainFQDN = '~~~ Avg all domains ~~~'\n)\n| order by DomainFQDN asc, TimeGenerated asc",
-        "size": 0,
-        "title": "Global Risk Score Trend",
-        "timeContext": {
-          "durationMs": 31536000000
-        },
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "linechart",
-        "chartSettings": {
-          "xAxis": "TimeGenerated",
-          "yAxis": [
-            "GlobalScore"
-          ],
-          "splitBy": "DomainFQDN",
-          "ySettings": {
-            "min": 0,
-            "max": 100
-          }
-        }
-      },
-      "customWidth": "100",
-      "name": "trend-global"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "PingCastle_Summary_CL\n| where TimeGenerated > ago(364d)\n| summarize\n    ['Stale Objects']  = round(avg(StaleObjectsScore), 1),\n    ['Priv. Accounts'] = round(avg(PrivilegiedGroupScore), 1),\n    Trusts             = round(avg(TrustScore), 1),\n    Anomalies          = round(avg(AnomalyScore), 1)\n    by bin(TimeGenerated, 7d)\n| order by TimeGenerated asc",
-        "size": 0,
-        "title": "Category Score Trends — Avg across all domains",
-        "timeContext": {
-          "durationMs": 31536000000
-        },
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "linechart",
-        "chartSettings": {
-          "xAxis": "TimeGenerated",
-          "yAxis": [
-            "Stale Objects",
-            "Priv. Accounts",
-            "Trusts",
-            "Anomalies"
-          ],
-          "ySettings": {
-            "min": 0,
-            "max": 100
-          }
-        }
-      },
-      "customWidth": "100",
-      "name": "trend-categories"
-    },
-    {
-      "type": 1,
-      "content": {
-        "json": "---\n## 🔍 Active Findings — Latest Scan\n_Only findings with Points > 0, based on the most recent scan per domain._"
-      },
-      "name": "section-header-findings"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "PingCastle_Findings_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN, RiskId\n| summarize\n    Critical = countif(Severity == 'Critical'),\n    High     = countif(Severity == 'High'),\n    Medium   = countif(Severity == 'Medium'),\n    Low      = countif(Severity == 'Low')\n    by Domain = DomainFQDN\n| order by Critical desc, High desc",
-        "size": 4,
-        "title": "Findings Summary by Domain",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table",
-        "gridSettings": {
-          "formatters": [
-            {
-              "columnMatch": "Critical",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "1",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "High",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "1",
-                    "representation": "orange",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Medium",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "1",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            }
-          ],
-          "rowLimit": 50,
-          "filter": true
-        }
-      },
-      "customWidth": "40",
-      "name": "findings-summary"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "PingCastle_Findings_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN, RiskId\n| summarize Count = count() by Severity, Category\n| order by Count desc",
-        "size": 0,
-        "title": "Findings by Severity and Category",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "barchart",
-        "chartSettings": {
-          "xAxis": "Category",
-          "yAxis": [
-            "Count"
-          ],
-          "splitBy": "Severity",
-          "seriesLabelSettings": [
-            {
-              "seriesName": "Critical",
-              "color": "red"
-            },
-            {
-              "seriesName": "High",
-              "color": "orange"
-            },
-            {
-              "seriesName": "Medium",
-              "color": "yellow"
-            },
-            {
-              "seriesName": "Low",
-              "color": "green"
-            }
-          ]
-        }
-      },
-      "customWidth": "60",
-      "name": "findings-by-category"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "PingCastle_Findings_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN, RiskId\n| project\n    Domain    = DomainFQDN,\n    Severity  = Severity,\n    Points    = Points,\n    Category  = Category,\n    RiskId    = RiskId,\n    Rationale = Rationale,\n    ScanDate  = TimeGenerated\n| order by Points desc, Domain asc",
-        "size": 3,
-        "title": "All Active Findings",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table",
-        "gridSettings": {
-          "formatters": [
-            {
-              "columnMatch": "Severity",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "==",
-                    "thresholdValue": "Critical",
-                    "representation": "red",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": "==",
-                    "thresholdValue": "High",
-                    "representation": "orange",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": "==",
-                    "thresholdValue": "Medium",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            },
-            {
-              "columnMatch": "Points",
-              "formatter": 18,
-              "formatOptions": {
-                "thresholdsOptions": "colors",
-                "thresholdsGrid": [
-                  {
-                    "operator": "Default",
-                    "thresholdValue": null,
-                    "representation": "green",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "5",
-                    "representation": "yellow",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "10",
-                    "representation": "orange",
-                    "text": "{0}"
-                  },
-                  {
-                    "operator": ">=",
-                    "thresholdValue": "15",
-                    "representation": "red",
-                    "text": "{0}"
-                  }
-                ]
-              }
-            }
-          ],
-          "rowLimit": 200,
-          "filter": true
-        }
-      },
-      "customWidth": "100",
-      "name": "findings-detail"
-    }
-  ],
-  "fallbackResourceIds": [
-    "/subscriptions/378670e9-7fc1-464c-ad69-22d320c5417a/resourcegroups/p-rgr-mgmtsecurity-01/providers/microsoft.operationalinsights/workspaces/p-loa-securityhuntingenrichments-02"
-  ],
-  "styleSettings": {
-    "paddingStyle": "narrow",
-    "spacingStyle": "narrow"
-  },
-  "fromTemplateId": "sentinel-UserWorkbook",
-  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+	"version": "Notebook/1.0",
+	"items": [
+		{
+			"type": 9,
+			"content": {
+				"version": "KqlParameterItem/1.0",
+				"parameters": [
+					{
+						"id": "a1b2c3d4-0001-0001-0001-000000000001",
+						"version": "KqlParameterItem/1.0",
+						"name": "TimeRange",
+						"label": "Time Range",
+						"type": 4,
+						"value": {
+							"durationMs": 2592000000
+						},
+						"typeSettings": {
+							"selectableValues": [
+								{
+									"durationMs": 604800000
+								},
+								{
+									"durationMs": 2592000000
+								},
+								{
+									"durationMs": 7776000000
+								},
+								{
+									"durationMs": 31536000000
+								}
+							],
+							"allowCustom": true
+						}
+					}
+				],
+				"style": "pills",
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces"
+			},
+			"name": "parameters"
+		},
+		{
+			"type": 1,
+			"content": {
+				"json": "# 🛡️ Active Directory Security — PingCastle Dashboard\n\nScores range from **0** (best) to **100** (worst). The Global Risk Score equals the maximum of the four category scores.\n\n---"
+			},
+			"name": "title"
+		},
+		{
+			"type": 1,
+			"content": {
+				"json": "## 🌐 Overall Average Domain Risk Score\n_Average across all domains — based on the latest scan per domain._"
+			},
+			"name": "section-header-overall"
+		},
+		{
+			"type": 3,
+			"content": {
+				"version": "KqlItem/1.0",
+				"query": "union\n	(PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = round(avg(GlobalScore), 0)					| project Name = 'Avg Risk Score',		Value = toint(v)),\n	(PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = dcount(DomainFQDN)									| project Name = 'Domains Scanned',	 Value = toint(v)),\n	(PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_Critical)					 | project Name = 'Critical Findings', Value = toint(v)),\n	(PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_High)							 | project Name = 'High Findings',		 Value = toint(v)),\n	(PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_Medium)						 | project Name = 'Medium Findings',	 Value = toint(v)),\n	(PingCastle_Summary_CL | summarize arg_max(TimeGenerated, *) by DomainFQDN | summarize v = sum(FindingsCount_Low)								| project Name = 'Low Findings',			Value = toint(v))",
+				"size": 4,
+				"title": "KPIs — Latest Scan per Domain (all time)",
+				"timeContext": {
+					"durationMs": 31536000000
+				},
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces",
+				"visualization": "tiles",
+				"tileSettings": {
+					"showBorder": true,
+					"titleContent": {
+						"columnMatch": "Name",
+						"formatter": 1
+					},
+					"leftContent": {
+						"columnMatch": "Value",
+						"formatter": 4,
+						"numberFormat": {
+							"unit": 0,
+							"options": {
+								"style": "decimal",
+								"maximumFractionDigits": 0
+							}
+						}
+					}
+				}
+			},
+			"customWidth": "100",
+			"name": "kpi-tiles"
+		},
+		{
+			"type": 3,
+			"content": {
+				"version": "KqlItem/1.0",
+				"query": "PingCastle_Summary_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN\n| project\n		Domain							 = DomainFQDN,\n		['Global Score']		 = GlobalScore,\n		['Stale Objects']		= StaleObjectsScore,\n		['Priv. Accounts']	 = PrivilegiedGroupScore,\n		Trusts							 = TrustScore,\n		Anomalies						= AnomalyScore,\n		['Maturity Level']	 = MaturityLevel,\n		Critical						 = FindingsCount_Critical,\n		High								 = FindingsCount_High,\n		Medium							 = FindingsCount_Medium,\n		Low									= FindingsCount_Low,\n		['Last Scan']				= TimeGenerated\n| order by ['Global Score'] desc",
+				"size": 4,
+				"title": "Domain Score Overview",
+				"timeContextFromParameter": "TimeRange",
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces",
+				"visualization": "table",
+				"gridSettings": {
+					"formatters": [
+						{
+							"columnMatch": "Global Score",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "30",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "50",
+										"representation": "orange",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "75",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Stale Objects",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "30",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "50",
+										"representation": "orange",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "75",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Priv. Accounts",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "30",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "50",
+										"representation": "orange",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "75",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Trusts",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "30",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "50",
+										"representation": "orange",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "75",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Anomalies",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "30",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "50",
+										"representation": "orange",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "75",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Critical",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "1",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "High",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "1",
+										"representation": "orange",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Maturity Level",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "red",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "3",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "4",
+										"representation": "green",
+										"text": "{0}"
+									}
+								]
+							}
+						}
+					],
+					"rowLimit": 50,
+					"filter": true
+				}
+			},
+			"customWidth": "100",
+			"name": "domain-overview-grid"
+		},
+		{
+			"type": 1,
+			"content": {
+				"json": "---\n## 📈 Score Trends — Last 52 Weeks\n_Weekly aggregation · max 52 data points per domain · each line = one domain_"
+			},
+			"name": "section-header-trends"
+		},
+		{
+			"type": 3,
+			"content": {
+				"version": "KqlItem/1.0",
+				"query": "PingCastle_Summary_CL\n| where TimeGenerated > ago(364d)\n| summarize GlobalScore = round(avg(GlobalScore), 1) by bin(TimeGenerated, 7d), DomainFQDN\n| union (\n		PingCastle_Summary_CL\n		| where TimeGenerated > ago(364d)\n		| summarize GlobalScore = round(avg(GlobalScore), 1) by bin(TimeGenerated, 7d)\n		| extend DomainFQDN = '~~~ Avg all domains ~~~'\n)\n| order by DomainFQDN asc, TimeGenerated asc",
+				"size": 0,
+				"title": "Global Risk Score Trend",
+				"timeContext": {
+					"durationMs": 31536000000
+				},
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces",
+				"visualization": "linechart",
+				"chartSettings": {
+					"xAxis": "TimeGenerated",
+					"yAxis": [
+						"GlobalScore"
+					],
+					"splitBy": "DomainFQDN",
+					"ySettings": {
+						"min": 0,
+						"max": 100
+					}
+				}
+			},
+			"customWidth": "100",
+			"name": "trend-global"
+		},
+		{
+			"type": 3,
+			"content": {
+				"version": "KqlItem/1.0",
+				"query": "PingCastle_Summary_CL\n| where TimeGenerated > ago(364d)\n| summarize\n		['Stale Objects']	= round(avg(StaleObjectsScore), 1),\n		['Priv. Accounts'] = round(avg(PrivilegiedGroupScore), 1),\n		Trusts						 = round(avg(TrustScore), 1),\n		Anomalies					= round(avg(AnomalyScore), 1)\n		by bin(TimeGenerated, 7d)\n| order by TimeGenerated asc",
+				"size": 0,
+				"title": "Category Score Trends — Avg across all domains",
+				"timeContext": {
+					"durationMs": 31536000000
+				},
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces",
+				"visualization": "linechart",
+				"chartSettings": {
+					"xAxis": "TimeGenerated",
+					"yAxis": [
+						"Stale Objects",
+						"Priv. Accounts",
+						"Trusts",
+						"Anomalies"
+					],
+					"ySettings": {
+						"min": 0,
+						"max": 100
+					}
+				}
+			},
+			"customWidth": "100",
+			"name": "trend-categories"
+		},
+		{
+			"type": 1,
+			"content": {
+				"json": "---\n## 🔍 Active Findings — Latest Scan\n_Only findings with Points > 0, based on the most recent scan per domain._"
+			},
+			"name": "section-header-findings"
+		},
+		{
+			"type": 3,
+			"content": {
+				"version": "KqlItem/1.0",
+				"query": "PingCastle_Findings_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN, RiskId\n| summarize\n		Critical = countif(Severity == 'Critical'),\n		High		 = countif(Severity == 'High'),\n		Medium	 = countif(Severity == 'Medium'),\n		Low			= countif(Severity == 'Low')\n		by Domain = DomainFQDN\n| order by Critical desc, High desc",
+				"size": 4,
+				"title": "Findings Summary by Domain",
+				"timeContextFromParameter": "TimeRange",
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces",
+				"visualization": "table",
+				"gridSettings": {
+					"formatters": [
+						{
+							"columnMatch": "Critical",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "1",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "High",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "1",
+										"representation": "orange",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Medium",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "1",
+										"representation": "yellow",
+										"text": "{0}"
+									}
+								]
+							}
+						}
+					],
+					"rowLimit": 50,
+					"filter": true
+				}
+			},
+			"customWidth": "40",
+			"name": "findings-summary"
+		},
+		{
+			"type": 3,
+			"content": {
+				"version": "KqlItem/1.0",
+				"query": "PingCastle_Findings_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN, RiskId\n| summarize Count = count() by Severity, Category\n| order by Count desc",
+				"size": 0,
+				"title": "Findings by Severity and Category",
+				"timeContextFromParameter": "TimeRange",
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces",
+				"visualization": "barchart",
+				"chartSettings": {
+					"xAxis": "Category",
+					"yAxis": [
+						"Count"
+					],
+					"splitBy": "Severity",
+					"seriesLabelSettings": [
+						{
+							"seriesName": "Critical",
+							"color": "red"
+						},
+						{
+							"seriesName": "High",
+							"color": "orange"
+						},
+						{
+							"seriesName": "Medium",
+							"color": "yellow"
+						},
+						{
+							"seriesName": "Low",
+							"color": "green"
+						}
+					]
+				}
+			},
+			"customWidth": "60",
+			"name": "findings-by-category"
+		},
+		{
+			"type": 3,
+			"content": {
+				"version": "KqlItem/1.0",
+				"query": "PingCastle_Findings_CL\n| summarize arg_max(TimeGenerated, *) by DomainFQDN, RiskId\n| project\n		Domain		= DomainFQDN,\n		Severity	= Severity,\n		Points		= Points,\n		Category	= Category,\n		RiskId		= RiskId,\n		Rationale = Rationale,\n		ScanDate	= TimeGenerated\n| order by Points desc, Domain asc",
+				"size": 3,
+				"title": "All Active Findings",
+				"timeContextFromParameter": "TimeRange",
+				"queryType": 0,
+				"resourceType": "microsoft.operationalinsights/workspaces",
+				"visualization": "table",
+				"gridSettings": {
+					"formatters": [
+						{
+							"columnMatch": "Severity",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "==",
+										"thresholdValue": "Critical",
+										"representation": "red",
+										"text": "{0}"
+									},
+									{
+										"operator": "==",
+										"thresholdValue": "High",
+										"representation": "orange",
+										"text": "{0}"
+									},
+									{
+										"operator": "==",
+										"thresholdValue": "Medium",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									}
+								]
+							}
+						},
+						{
+							"columnMatch": "Points",
+							"formatter": 18,
+							"formatOptions": {
+								"thresholdsOptions": "colors",
+								"thresholdsGrid": [
+									{
+										"operator": "Default",
+										"thresholdValue": null,
+										"representation": "green",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "5",
+										"representation": "yellow",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "10",
+										"representation": "orange",
+										"text": "{0}"
+									},
+									{
+										"operator": ">=",
+										"thresholdValue": "15",
+										"representation": "red",
+										"text": "{0}"
+									}
+								]
+							}
+						}
+					],
+					"rowLimit": 200,
+					"filter": true
+				}
+			},
+			"customWidth": "100",
+			"name": "findings-detail"
+		}
+	],
+	"fallbackResourceIds": [
+		"/subscriptions/378670e9-7fc1-464c-ad69-22d320c5417a/resourcegroups/p-rgr-mgmtsecurity-01/providers/microsoft.operationalinsights/workspaces/p-loa-securityhuntingenrichments-02"
+	],
+	"styleSettings": {
+		"paddingStyle": "narrow",
+		"spacingStyle": "narrow"
+	},
+	"fromTemplateId": "sentinel-UserWorkbook",
+	"$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
