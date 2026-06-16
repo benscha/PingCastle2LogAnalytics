@@ -1,0 +1,54 @@
+namename: Traffic Archive
+
+on:
+  repository_dispatch:
+    types: [hourly_sync]
+  workflow_dispatch:
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch & save traffic data
+        env:
+          GH_TOKEN: ${{ secrets.TRAFFIC_PAT }}
+          REPO: ${{ github.repository }}
+          REPO_ALIAS: PC2Sentinel
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          mkdir -p traffic
+
+          VIEWS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/traffic/views")
+
+          CLONES=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/traffic/clones")
+
+          REFERRERS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/traffic/popular/referrers")
+
+          jq -n \
+            --arg date "$DATE" \
+            --arg time "$(date +%H:%M:%S)" \
+            --argjson views "$VIEWS" \
+            --argjson clones "$CLONES" \
+            --argjson referrers "$REFERRERS" \
+            '{date: $date, last_updated: $time, views: $views, clones: $clones, referrers: $referrers}' \
+            > "traffic/${DATE}_${REPO_ALIAS}.json"
+
+      - name: Push to private stats repo
+        env:
+          TRAFFIC_PAT: ${{ secrets.TRAFFIC_PAT }}
+          REPO_ALIAS: myRepo2
+        run: |
+          git clone https://x-access-token:$TRAFFIC_PAT@github.com/benscha/stats.git stats-repo
+          mkdir -p stats-repo/traffic
+          cp traffic/*.json stats-repo/traffic/
+          cd stats-repo
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add traffic/
+          git diff --cached --quiet || (git commit -m "chore: traffic archive $(date +%Y-%m-%d) [$REPO_ALIAS]" && git push)
