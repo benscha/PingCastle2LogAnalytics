@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Fetch & save traffic data
         env:
-          GH_TOKEN: ${{ secrets.TRAFFIC_PAT }}
+          GH_TOKEN: ${{ secrets.TRAFFICPAT2 }}
           REPO: ${{ github.repository }}
           REPO_ALIAS: PC2Sentinel
         run: |
@@ -34,7 +34,7 @@ jobs:
             > "traffic/${DATE}_${REPO_ALIAS}.json"
       - name: Debug token
         env:
-          TRAFFIC_PAT: ${{ secrets.TRAFFIC_PAT }}
+          TRAFFIC_PAT: ${{ secrets.TRAFFICPAT2 }}
         run: |
           echo "Token length: ${#TRAFFIC_PAT}"
           echo "Token prefix: ${TRAFFIC_PAT:0:4}"
