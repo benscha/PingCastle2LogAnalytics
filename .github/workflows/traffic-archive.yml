@@ -1,4 +1,4 @@
-namename: Traffic Archive
+name: Traffic Archive
 
 on:
   repository_dispatch:
