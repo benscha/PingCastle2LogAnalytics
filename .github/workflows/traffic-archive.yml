@@ -44,7 +44,7 @@ jobs:
           TRAFFIC_PAT: ${{ secrets.TRAFFIC_PAT }}
           REPO_ALIAS: myRepo2
         run: |
-          git clone https://x-access-token:$TRAFFIC_PAT@github.com/benscha/stats.git stats-repo
+          git clone https://benscha:$TRAFFIC_PAT@github.com/benscha/stats.git stats-repo
           mkdir -p stats-repo/traffic
           cp traffic/*.json stats-repo/traffic/
           cd stats-repo
