@@ -6,10 +6,12 @@ on:
 jobs:
   archive:
     runs-on: ubuntu-latest
+    env:
+      TRAFFIC_PAT: ${{ secrets.TrafficPAT2 }}
     steps:
       - name: Fetch & save traffic data
         env:
-          GH_TOKEN: ${{ secrets.TRAFFICPAT2 }}
+          GH_TOKEN: ${{ env.TRAFFIC_PAT }}
           REPO: ${{ github.repository }}
           REPO_ALIAS: PC2Sentinel
         run: |
@@ -33,14 +35,11 @@ jobs:
             '{date: $date, last_updated: $time, views: $views, clones: $clones, referrers: $referrers}' \
             > "traffic/${DATE}_${REPO_ALIAS}.json"
       - name: Debug token
-        env:
-          TRAFFIC_PAT: ${{ secrets.TRAFFICPAT2 }}
         run: |
           echo "Token length: ${#TRAFFIC_PAT}"
           echo "Token prefix: ${TRAFFIC_PAT:0:4}"
       - name: Push to private stats repo
         env:
-          TRAFFIC_PAT: ${{ secrets.TRAFFIC_PAT }}
           REPO_ALIAS: PC2Sentinel
         run: |
           git clone https://benscha:$TRAFFIC_PAT@github.com/benscha/stats.git stats-repo
